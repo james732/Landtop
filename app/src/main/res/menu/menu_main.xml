@@ -1,6 +1,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools" tools:context=".MainActivity">
-    <item android:id="@+id/action_settings" android:title="@string/action_settings"
-        android:orderInCategory="100" app:showAsAction="never" />
+    <item android:id="@+id/sort_by_money" android:title="根據價格排列" />
+    <item android:id="@+id/sort_by_web_order" android:title="根據網頁順序排列" />
+    <item android:id="@+id/show_all" android:title="ALL" />
+    <item android:id="@+id/show_apple" android:title="APPLE" />
+    <item android:id="@+id/show_asus" android:title="ASUS" />
+    <item android:id="@+id/show_htc" android:title="hTC" />
+    <item android:id="@+id/show_lg" android:title="LG" />
+    <item android:id="@+id/show_samsung" android:title="Samsung" />
+    <item android:id="@+id/show_sony" android:title="Sony" />
+    <item android:id="@+id/show_infocus" android:title="InFocus" />
+    <item android:id="@+id/show_huawei" android:title="HUAWEI" />
+    <item android:id="@+id/show_oppo" android:title="oppo" />
+    <item android:id="@+id/show_mi" android:title="MI" />
 </menu>
