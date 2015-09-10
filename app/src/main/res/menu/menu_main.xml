@@ -14,4 +14,5 @@
     <item android:id="@+id/show_huawei" android:title="HUAWEI" />
     <item android:id="@+id/show_oppo" android:title="oppo" />
     <item android:id="@+id/show_mi" android:title="MI" />
+    <item android:id="@+id/show_twm" android:title="TWM" />
 </menu>

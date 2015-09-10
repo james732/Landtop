@@ -1,22 +1,40 @@
 package james.landtop;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler threadHandler;
 
     private HashMap<PhoneCompany.CompanyEnum, PhoneCompany> compsMap = new HashMap<>();
-    ArrayList<HashMap<String, Object>> arrayList = new ArrayList<>();
+    ArrayList<HashMap<String, Object>> listForView = new ArrayList<>();
     ArrayList<PhonePrice> allPhones = new ArrayList<>();
     ArrayList<PhonePrice> currentShow;
     SimpleAdapter adapter;
@@ -43,9 +61,9 @@ public class MainActivity extends AppCompatActivity {
 
         adapter = new SimpleAdapter(
                 getApplicationContext(),
-                arrayList,
+                listForView,
                 R.layout.list,
-                new String[]{ "article", "time" },
+                new String[]{ "PhoneName", "PhonePrice" },
                 new int[] { R.id.textView1, R.id.textView2 });
         listView.setAdapter(adapter);
 
@@ -71,15 +89,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-
-        /*
-        settings = getSharedPreferences("PHONE", MODE_PRIVATE);
-
-        for (PhonePrice pp : allPhones) {
-            switch (pp.priceState) {
-            }
-        }
-        */
     }
 
     private void parse() {
@@ -87,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
 
         allPhones.clear();
         compsMap.clear();
+
+        HashMap<String, Integer> namePriceMap = new HashMap<>();
+        StringBuilder sb = new StringBuilder();
 
         try {
             while (response == null || response.statusCode() != 200) {
@@ -112,24 +124,148 @@ public class MainActivity extends AppCompatActivity {
                     String name = phone.child(0).child(0).child(0).text();
                     String money = phone.child(1).text().substring(2);
 
+                    sb.append(name);
+                    sb.append(money);
+
                     PhonePrice pp = new PhonePrice(phoneCompany, name, money, phoneSn);
                     phoneCompany.phones.add(pp);
                     allPhones.add(pp);
                     phoneSn++;
+
+                    namePriceMap.put(pp.name, pp.price);
                 }
             }
+            checkPrevPrice(namePriceMap, stringToHash(sb.toString()));
         } catch (Exception e) {
+            Log.d("RAIN", "Exception in Parse: " + e.getMessage());
+
+        }
+    }
+
+    HashMap<String, Double> getFromJson(String s) throws IOException {
+        HashMap<String, Double> m = new HashMap<>();
+
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        File file = new File(path, s + ".txt");
+
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        StringBuffer sb = new StringBuffer();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
+        }
+        String json = sb.toString();
+        m = new Gson().fromJson(json, m.getClass());
+
+        return m;
+    }
+
+    void saveToJson(HashMap<String, Integer> m, String s) throws IOException {
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        File file = new File(path, s + ".txt");
+
+        String json = new Gson().toJson(m);
+
+        path.mkdirs();
+        FileOutputStream o = new FileOutputStream(file);
+        o.write(json.getBytes());
+        o.close();
+    }
+
+    private void checkAllPrice() throws IOException {
+        HashMap<String, Double> prevNamePriceMap = getFromJson("PrevPrev");
+
+        for (PhonePrice p : allPhones) {
+            if (prevNamePriceMap.containsKey(p.name)) {
+                p.prev_price = prevNamePriceMap.get(p.name).intValue();
+            }
+        }
+    }
+
+    private String stringToHash(String str) {
+        StringBuilder sb = new StringBuilder();
+
+        try {
+            MessageDigest md5 = MessageDigest.getInstance("SHA-1");
+            md5.update(str.getBytes());
+            byte[] digest = md5.digest();
+
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+        }
+        catch (NoSuchAlgorithmException e) {
+
+        }
+
+        return sb.toString();
+    }
+
+    private void updateJsonFiles(HashMap<String, Integer> m) throws IOException {
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        File prevFile = new File(path, "Prev.txt");
+        File prevPrevFile = new File(path, "PrevPrev.txt");
+
+        prevPrevFile.deleteOnExit();
+        prevFile.renameTo(new File(path, "PrevPrev.txt"));
+
+        saveToJson(m, "PrevJson");
+    }
+
+    private void checkPrevPrice(HashMap<String, Integer> namePriceMap, String currentHash)
+            throws IOException  {
+        SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+
+        String prevHash = sharedPref.getString("PREV_HASH", "");
+        String prevPrevHash = sharedPref.getString("PREV_PREV_HASH", "");
+
+        Log.d("RAIN", "Current Hash: " + currentHash);
+        Log.d("RAIN", "Prev Hash: " + prevHash);
+        Log.d("RAIN", "PrevPrev Hash: " + prevPrevHash);
+
+        if (prevHash.equals("")) {
+            // 初次執行
+            Toast.makeText(this, "初次執行", Toast.LENGTH_LONG).show();
+
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString("PREV_HASH", currentHash);
+            editor.commit();
+
+            saveToJson(namePriceMap, "Prev");
+        } else if (prevHash.equals(currentHash)) {
+            if (!prevPrevHash.equals("")) {
+                Toast.makeText(this, "網頁沒有更新，有舊資料可比較", Toast.LENGTH_LONG).show();
+                checkAllPrice();
+            }
+            else {
+                Toast.makeText(this, "網頁沒有更新，也沒有舊資料可比較", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            // 網頁已更新
+            Toast.makeText(this, "網頁有更新", Toast.LENGTH_LONG).show();
+
+            prevPrevHash = prevHash;
+            prevHash = currentHash;
+
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString("PREV_HASH", prevHash);
+            editor.putString("PREV_PREV_HASH", prevPrevHash);
+            editor.commit();
+
+            updateJsonFiles(namePriceMap);
+
+            checkAllPrice();
         }
     }
 
     private void updateList() {
-        arrayList.clear();
+        listForView.clear();
 
         for (PhonePrice pp : currentShow) {
             HashMap<String, Object> hashMap = new HashMap<>();
-            hashMap.put("article", pp);
-            hashMap.put("time", pp.price);
-            arrayList.add(hashMap);
+            hashMap.put("PhoneName", pp);
+            hashMap.put("PhonePrice", pp.getPriceString());
+            listForView.add(hashMap);
         }
 
         adapter.notifyDataSetChanged();
@@ -205,6 +341,9 @@ public class MainActivity extends AppCompatActivity {
             case R.id.show_mi:
                 return showCompany(PhoneCompany.CompanyEnum.MI);
 
+            case R.id.show_twm:
+                return showCompany(PhoneCompany.CompanyEnum.TWM);
+
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -219,20 +358,15 @@ public class MainActivity extends AppCompatActivity {
 
 class PhonePrice {
     public PhonePrice(PhoneCompany c, String n, String p, int i) {
-        comp = c;
-        name = n;
+        name = c.company + " " + n;
         price = Integer.parseInt(p);
         id = i;
+        prev_price = 0;
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(comp.company);
-        sb.append(" ");
-        sb.append(name);
-
-        return sb.toString();
+        return name;
     }
 
     public String getPriceString() {
@@ -240,15 +374,35 @@ class PhonePrice {
         sb.append("$ ");
         sb.append(price);
 
+        if (prev_price != 0) {
+            sb.append(" ");
+
+            int diff = prev_price - price;
+            if (diff != 0) {
+                if (diff > 0) {
+                    sb.append(" ↘ $");
+                }
+                else {
+                    sb.append(" ↗ $");
+                    diff = -diff;
+                }
+                sb.append(diff);
+            }
+            else {
+                sb.append(" ー");
+            }
+        }
+        else {
+            sb.append(" 新");
+        }
+
         return sb.toString();
     }
 
-    public PhoneCompany comp;
     public String name;
     public int id;
-
     public int price;
-    public ArrayList<Integer> oldPrices = new ArrayList<>();
+    public int prev_price;
 }
 
 class PhoneCompany {
@@ -272,6 +426,7 @@ class PhoneCompany {
         MTO,
         COOLPAD,
         MI,
+        TWM,
         UNKNOWN,
     }
 
@@ -296,6 +451,7 @@ class PhoneCompany {
         companyPicMap.put("images/prodpt/957X0d.jpg", CompanyEnum.MTO);
         companyPicMap.put("images/prodpt/886lV7.jpg", CompanyEnum.COOLPAD);
         companyPicMap.put("images/prodpt/734wY8.gif", CompanyEnum.MI);
+        companyPicMap.put("images/prodpt/084DtY.jpg", CompanyEnum.TWM);
     };
 
     static public PhoneCompany getCompanyFromPicture(String name) {
