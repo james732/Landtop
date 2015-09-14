@@ -1,18 +1,46 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools" tools:context=".MainActivity">
-    <item android:id="@+id/sort_by_money" android:title="根據價格排列" />
-    <item android:id="@+id/sort_by_web_order" android:title="根據網頁順序排列" />
-    <item android:id="@+id/show_all" android:title="ALL" />
-    <item android:id="@+id/show_apple" android:title="APPLE" />
-    <item android:id="@+id/show_asus" android:title="ASUS" />
-    <item android:id="@+id/show_htc" android:title="hTC" />
-    <item android:id="@+id/show_lg" android:title="LG" />
-    <item android:id="@+id/show_samsung" android:title="Samsung" />
-    <item android:id="@+id/show_sony" android:title="Sony" />
-    <item android:id="@+id/show_infocus" android:title="InFocus" />
-    <item android:id="@+id/show_huawei" android:title="HUAWEI" />
-    <item android:id="@+id/show_oppo" android:title="oppo" />
-    <item android:id="@+id/show_mi" android:title="MI" />
-    <item android:id="@+id/show_twm" android:title="TWM" />
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MainActivity">
+
+    <item
+        app:showAsAction="always"
+        android:title="排序">
+
+        <menu>
+            <item android:id="@+id/sort_by_money" android:title="價格" />
+            <item android:id="@+id/sort_by_web_order" android:title="網頁順序" />
+        </menu>
+    </item>
+
+    <item
+        app:showAsAction="always"
+        android:title="顯示">
+
+        <menu>
+            <item android:id="@+id/show_phone" android:title="手機" />
+            <item android:id="@+id/show_pad" android:title="平板" />
+            <item android:id="@+id/show_pad_phone" android:title="手機與平板" />
+        </menu>
+    </item>
+
+    <item
+        app:showAsAction="always"
+        android:title="廠牌">
+
+        <menu>
+            <item android:id="@+id/show_all" android:title="ALL" />
+            <item android:id="@+id/show_apple" android:title="APPLE" />
+            <item android:id="@+id/show_asus" android:title="ASUS" />
+            <item android:id="@+id/show_htc" android:title="hTC" />
+            <item android:id="@+id/show_lg" android:title="LG" />
+            <item android:id="@+id/show_samsung" android:title="Samsung" />
+            <item android:id="@+id/show_sony" android:title="Sony" />
+            <item android:id="@+id/show_infocus" android:title="InFocus" />
+            <item android:id="@+id/show_huawei" android:title="HUAWEI" />
+            <item android:id="@+id/show_oppo" android:title="oppo" />
+            <item android:id="@+id/show_mi" android:title="MI" />
+            <item android:id="@+id/show_twm" android:title="TWM" />
+        </menu>
+    </item>
 </menu>

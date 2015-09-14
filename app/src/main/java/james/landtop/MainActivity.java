@@ -49,6 +49,14 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<PhonePrice> currentShow;
     SimpleAdapter adapter;
 
+    enum ShowType {
+        All,
+        Phone,
+        Tablet
+    }
+
+    ShowType showType = ShowType.Phone;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,6 +99,20 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
+    private Boolean isPad(String s) {
+        String upperStr = s.toUpperCase();
+
+        if (upperStr.contains("PADFONE")) {
+            return false;
+        }
+        else if (upperStr.contains("TAB") || upperStr.contains("PAD") || upperStr.contains("TABLET")) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
     private void parse() {
         Response response = null;
 
@@ -128,6 +150,14 @@ public class MainActivity extends AppCompatActivity {
                     sb.append(money);
 
                     PhonePrice pp = new PhonePrice(phoneCompany, name, money, phoneSn);
+
+                    if (isPad(name)) {
+                        pp.type = PhonePrice.Type.Tablet;
+                    }
+                    else  {
+                        pp.type = PhonePrice.Type.Phone;
+                    }
+
                     phoneCompany.phones.add(pp);
                     allPhones.add(pp);
                     phoneSn++;
@@ -137,8 +167,7 @@ public class MainActivity extends AppCompatActivity {
             }
             checkPrevPrice(namePriceMap, stringToHash(sb.toString()));
         } catch (Exception e) {
-            Log.d("RAIN", "Exception in Parse: " + e.getMessage());
-
+            Log.d("PHONE", "Exception in Parse: " + e.getMessage());
         }
     }
 
@@ -182,20 +211,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private String stringToHash(String str) {
+    private String stringToHash(String str) throws NoSuchAlgorithmException {
         StringBuilder sb = new StringBuilder();
 
-        try {
-            MessageDigest md5 = MessageDigest.getInstance("SHA-1");
-            md5.update(str.getBytes());
-            byte[] digest = md5.digest();
+        MessageDigest md5 = MessageDigest.getInstance("SHA-1");
+        md5.update(str.getBytes());
+        byte[] digest = md5.digest();
 
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
-        }
-        catch (NoSuchAlgorithmException e) {
-
+        for (byte b : digest) {
+            sb.append(String.format("%02x", b & 0xff));
         }
 
         return sb.toString();
@@ -209,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
         prevPrevFile.deleteOnExit();
         prevFile.renameTo(new File(path, "PrevPrev.txt"));
 
-        saveToJson(m, "PrevJson");
+        saveToJson(m, "Prev");
     }
 
     private void checkPrevPrice(HashMap<String, Integer> namePriceMap, String currentHash)
@@ -219,9 +243,9 @@ public class MainActivity extends AppCompatActivity {
         String prevHash = sharedPref.getString("PREV_HASH", "");
         String prevPrevHash = sharedPref.getString("PREV_PREV_HASH", "");
 
-        Log.d("RAIN", "Current Hash: " + currentHash);
-        Log.d("RAIN", "Prev Hash: " + prevHash);
-        Log.d("RAIN", "PrevPrev Hash: " + prevPrevHash);
+        Log.d("PHONE", "Current Hash: " + currentHash);
+        Log.d("PHONE", "Prev Hash: " + prevHash);
+        Log.d("PHONE", "PrevPrev Hash: " + prevPrevHash);
 
         if (prevHash.equals("")) {
             // 初次執行
@@ -262,6 +286,14 @@ public class MainActivity extends AppCompatActivity {
         listForView.clear();
 
         for (PhonePrice pp : currentShow) {
+
+            if (showType == ShowType.Phone && pp.type == PhonePrice.Type.Tablet) {
+                continue;
+            }
+            else if (showType == ShowType.Tablet && pp.type == PhonePrice.Type.Phone) {
+                continue;
+            }
+
             HashMap<String, Object> hashMap = new HashMap<>();
             hashMap.put("PhoneName", pp);
             hashMap.put("PhonePrice", pp.getPriceString());
@@ -344,6 +376,21 @@ public class MainActivity extends AppCompatActivity {
             case R.id.show_twm:
                 return showCompany(PhoneCompany.CompanyEnum.TWM);
 
+            case R.id.show_pad_phone:
+                showType = ShowType.All;
+                updateList();
+                return true;
+
+            case R.id.show_pad:
+                showType = ShowType.Tablet;
+                updateList();
+                return true;
+
+            case R.id.show_phone:
+                showType = ShowType.Phone;
+                updateList();
+                return true;
+
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -403,6 +450,13 @@ class PhonePrice {
     public int id;
     public int price;
     public int prev_price;
+
+    public enum Type {
+        Phone,
+        Tablet
+    }
+
+    public Type type;
 }
 
 class PhoneCompany {
