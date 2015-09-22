@@ -52,10 +52,19 @@ public class MainActivity extends AppCompatActivity {
     enum ShowType {
         All,
         Phone,
-        Tablet
+        Tablet,
+        MoneyDiff
     }
 
     ShowType showType = ShowType.Phone;
+
+    enum SortOrder {
+        ByWeb,
+        ByMoney,
+        ByDiff
+    }
+
+    SortOrder sortOrder = SortOrder.ByWeb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -285,12 +294,41 @@ public class MainActivity extends AppCompatActivity {
     private void updateList() {
         listForView.clear();
 
+        if (sortOrder == SortOrder.ByMoney) {
+            Collections.sort(currentShow, new Comparator<PhonePrice>() {
+                @Override
+                public int compare(PhonePrice lhs, PhonePrice rhs) {
+                    return Integer.compare(rhs.price, lhs.price);
+                }
+            });
+        }
+        else if (sortOrder == SortOrder.ByDiff) {
+            Collections.sort(currentShow, new Comparator<PhonePrice>() {
+                @Override
+                public int compare(PhonePrice lhs, PhonePrice rhs) {
+                    return Integer.compare(lhs.getPriceDiff(), rhs.getPriceDiff());
+                }
+            });
+        }
+        else {
+            Collections.sort(currentShow, new Comparator<PhonePrice>() {
+                @Override
+                public int compare(PhonePrice lhs, PhonePrice rhs) {
+                    return Integer.compare(lhs.id, rhs.id);
+                }
+            });
+        }
+
         for (PhonePrice pp : currentShow) {
 
             if (showType == ShowType.Phone && pp.type == PhonePrice.Type.Tablet) {
                 continue;
             }
             else if (showType == ShowType.Tablet && pp.type == PhonePrice.Type.Phone) {
+                continue;
+            }
+            else if (showType == ShowType.MoneyDiff
+                    && pp.getPriceStatus() == PhonePrice.PriceStatus.Same) {
                 continue;
             }
 
@@ -317,24 +355,21 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
+        item.setChecked(true);
+
         switch (id) {
             case R.id.sort_by_money:
-                Collections.sort(currentShow, new Comparator<PhonePrice>() {
-                    @Override
-                    public int compare(PhonePrice lhs, PhonePrice rhs) {
-                        return Integer.compare(rhs.price, lhs.price);
-                    }
-                });
+                sortOrder = SortOrder.ByMoney;
                 updateList();
                 return true;
 
             case R.id.sort_by_web_order:
-                Collections.sort(currentShow, new Comparator<PhonePrice>() {
-                    @Override
-                    public int compare(PhonePrice lhs, PhonePrice rhs) {
-                        return Integer.compare(lhs.id, rhs.id);
-                    }
-                });
+                sortOrder = SortOrder.ByWeb;
+                updateList();
+                return true;
+
+            case R.id.sort_by_moneydiff:
+                sortOrder = SortOrder.ByDiff;
                 updateList();
                 return true;
 
@@ -388,6 +423,11 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.show_phone:
                 showType = ShowType.Phone;
+                updateList();
+                return true;
+
+            case R.id.show_money_diff:
+                showType = ShowType.MoneyDiff;
                 updateList();
                 return true;
 
@@ -446,6 +486,30 @@ class PhonePrice {
         return sb.toString();
     }
 
+    public PriceStatus getPriceStatus() {
+        if (prev_price == 0) {
+            return PriceStatus.New;
+        }
+        else if (price == prev_price) {
+            return PriceStatus.Same;
+        }
+        else if (price > prev_price) {
+            return PriceStatus.Down;
+        }
+        else {
+            return PriceStatus.Up;
+        }
+    }
+
+    public int getPriceDiff() {
+        if (getPriceStatus() == PriceStatus.New) {
+            return price;
+        }
+        else {
+            return price - prev_price;
+        }
+    }
+
     public String name;
     public int id;
     public int price;
@@ -454,6 +518,13 @@ class PhonePrice {
     public enum Type {
         Phone,
         Tablet
+    }
+
+    public enum PriceStatus {
+        New,
+        Same,
+        Up,
+        Down
     }
 
     public Type type;
